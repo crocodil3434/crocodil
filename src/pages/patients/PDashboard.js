@@ -68,6 +68,9 @@ export default function PDashboard() {
   const [requestToUpdate, setRequestToUpdate] = useState(null);
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
 
+
+  
+
   const updatePasswordModal = async () => {
     const { value: formValues } = await swal.fire({
       title: "Şifre Güncelle",
@@ -312,6 +315,45 @@ export default function PDashboard() {
     }
   };
 
+  const updateStepStatus = async (therapyId, stepId, isCompleted) => {
+    try {
+      // Firestore referansını alın
+      const stepRef = doc(
+        firestore,
+        `patients/${user.uid}/therapies/${therapyId}/steps`,
+        stepId
+      );
+  
+      // Adım durumunu güncelle
+      await updateDoc(stepRef, { isCompleted });
+  
+      // Başarılı mesajı göster
+      Swal.fire(
+        "Başarılı!",
+        `Adım durumu başarıyla ${isCompleted ? "tamamlandı" : "iptal edildi"}.`,
+        "success"
+      );
+  
+      // UI'ı güncellemek için fetchTherapies'i tekrar çağırın
+      const updatedTherapies = await fetchTherapies();
+      setTherapies(updatedTherapies);
+    } catch (error) {
+      console.error("Adım durumu güncellenirken bir hata oluştu: ", error);
+      Swal.fire("Hata!", "Adım durumu güncellenemedi.", "error");
+    }
+  };
+
+  useEffect(() => {
+    const loadTherapies = async () => {
+      if (user) {
+        const therapies = await fetchTherapies();
+        setTherapies(therapies);
+      }
+    };
+    loadTherapies();
+  }, [user?.uid]);
+  
+
   useEffect(() => {
     if (user) {
       fetchNotes();
@@ -449,83 +491,106 @@ export default function PDashboard() {
     ),
     Ödevlendirme: (
       <div className="w-full space-y-2">
-        {therapies.map((therapy, index) => {
-          if (
-            therapy.steps?.length === 0 ||
-            therapy.steps === undefined ||
-            therapy.steps === null
-          )
-            return null;
-          return (
-            <div
-              className={`content ${isAnimated ? "animate-slideIn" : ""}`}
-              style={{ animationDelay: `${(index + 1) * 100}ms` }}
-              key={index + "-therapy"}
-            >
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-4">
-                <div className="px-4 py-5 sm:px-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    {therapy.therapyName}
-                  </h3>
-                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                    {therapy.generalDescription}
-                  </p>
-                </div>
-                <div className="border-t border-gray-200">
-                  <dl>
-                    {therapy.steps.map((step, stepIndex) => (
-                      <Disclosure key={stepIndex} as={Fragment}>
-                        {({ open }) => (
-                          <>
-                            <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm text-left text-gray-900 font-medium bg-gray-100 hover:bg-gray-200 focus:outline-none focus-visible:ring focus-visible:ring-gray-500 focus-visible:ring-opacity-75 rounded-lg">
-                              <span>
-                                Adım {stepIndex + 1}: {step.content}
-                              </span>
-                              <ChevronUpIcon
-                                className={`${
-                                  open ? "transform rotate-180" : ""
-                                } w-5 h-5 text-gray-500`}
-                              />
-                            </Disclosure.Button>
-                            <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-900">
-                              <p>{step.description}</p>
-                              {step?.photoUrl && (
-                                <div className="bg-white border border-gray-300 shadow-sm rounded-md overflow-hidden w-max m-3 ml-0 flex flex-col">
-                                  <img
-                                    className="w-36 h-36 aspect-square"
-                                    src={step?.photoUrl}
-                                    alt=""
-                                  />
-                                  <a
-                                    className="text-xs  text-center py-1"
-                                    href={step?.photoUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    download
-                                  >
-                                    Download
-                                  </a>
-                                </div>
-                              )}
-                              {step?.videoUrl && (
-                                <ReactPlayer
-                                  url={step?.videoUrl}
-                                  controls
-                                  width="50%"
-                                  height="50%"
+      {therapies.map((therapy, index) => {
+        if (
+          therapy.steps?.length === 0 ||
+          therapy.steps === undefined ||
+          therapy.steps === null
+        )
+          return null;
+        return (
+          <div
+            className={`content ${isAnimated ? "animate-slideIn" : ""}`}
+            style={{ animationDelay: `${(index + 1) * 100}ms` }}
+            key={index + "-therapy"}
+          >
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-4">
+              <div className="px-4 py-5 sm:px-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  {therapy.therapyName}
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  {therapy.generalDescription}
+                </p>
+              </div>
+              <div className="border-t border-gray-200">
+                <dl>
+                  {therapy.steps.map((step, stepIndex) => (
+                    <Disclosure key={stepIndex} as={Fragment}>
+                      {({ open }) => (
+                        <>
+                          <Disclosure.Button className="flex justify-between w-full px-4 py-2 text-sm text-left text-gray-900 font-medium bg-gray-100 hover:bg-gray-200 focus:outline-none focus-visible:ring focus-visible:ring-gray-500 focus-visible:ring-opacity-75 rounded-lg">
+                            <span>
+                              Adım {stepIndex + 1}: {step.content}
+                            </span>
+                            <ChevronUpIcon
+                              className={`${
+                                open ? "transform rotate-180" : ""
+                              } w-5 h-5 text-gray-500`}
+                            />
+                          </Disclosure.Button>
+                          <Disclosure.Panel className="px-4 pt-4 pb-2 text-sm text-gray-900">
+                            <p>{step.description}</p>
+                            <p>
+                              <strong>Son Teslim Tarihi:</strong>{" "}
+                              {step.completionDate}
+                            </p>
+                            <p>
+                              <strong>Tamamlandı mı:</strong>{" "}
+                              {step.isCompleted ? "Evet" : "Hayır"}
+                            </p>
+                            {step.isCompleted ? (
+  <button
+    className="mt-2 inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+    onClick={() => updateStepStatus(therapy.id, step.id, false)}
+  >
+    Tamamlamayı İptal Et
+  </button>
+) : (
+  <button
+    className="mt-2 inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+    onClick={() => updateStepStatus(therapy.id, step.id, true)}
+  >
+    Tamamla
+  </button>
+)}
+                            {step?.photoUrl && (
+                              <div className="bg-white border border-gray-300 shadow-sm rounded-md overflow-hidden w-max m-3 ml-0 flex flex-col">
+                                <img
+                                  className="w-36 h-36 aspect-square"
+                                  src={step?.photoUrl}
+                                  alt="Adım Fotoğrafı"
                                 />
-                              )}
-                            </Disclosure.Panel>
-                          </>
-                        )}
-                      </Disclosure>
-                    ))}
-                  </dl>
-                </div>
+                                <a
+                                  className="text-xs  text-center py-1"
+                                  href={step?.photoUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                >
+                                  Fotoğrafı İndir
+                                </a>
+                              </div>
+                            )}
+                            {step?.videoUrl && (
+                              <ReactPlayer
+                                url={step?.videoUrl}
+                                controls
+                                width="50%"
+                                height="50%"
+                              />
+                            )}
+                          </Disclosure.Panel>
+                        </>
+                      )}
+                    </Disclosure>
+                  ))}
+                </dl>
               </div>
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
         {therapies?.length === 0 && (
           <div
             className={`content ${isAnimated ? "animate-slideIn" : ""}`}
@@ -569,53 +634,7 @@ export default function PDashboard() {
   const handleBoxClick = (boxName) => {
     setSelectedBox(selectedBox === boxName ? "" : boxName);
   };
-  const toggleTaskCompletion = async (therapyId, stepIndex, isCompleted) => {
-    const therapyRef = doc(
-      firestore,
-      `patients/${user.uid}/therapies/${therapyId}`
-    );
 
-    try {
-      const therapyDoc = await getDoc(therapyRef);
-      if (!therapyDoc.exists()) {
-        throw new Error("Therapy document does not exist!");
-      }
-
-      // Retrieve current data and update it
-      let therapyData = therapyDoc.data();
-      if (!therapyData.steps || therapyData.steps.length <= stepIndex) {
-        throw new Error("Step index out of bounds");
-      }
-
-      // Update the specific step
-      therapyData.steps[stepIndex].isCompleted = !isCompleted;
-
-      // Update the entire steps array back to Firestore
-      await updateDoc(therapyRef, {
-        steps: therapyData.steps,
-      });
-
-      Swal.fire({
-        title: "Başarılı!",
-        text: isCompleted
-          ? "Görev tamamlama iptal edildi."
-          : "Görev başarıyla tamamlandı.",
-        icon: "success",
-        confirmButtonText: "Tamam",
-      });
-
-      // Refresh the therapies data
-      fetchTherapies();
-    } catch (error) {
-      console.error("Görev güncelleme hatası:", error);
-      Swal.fire({
-        title: "Hata!",
-        text: "İşlem sırasında bir hata meydana geldi: " + error.message,
-        icon: "error",
-        confirmButtonText: "Tamam",
-      });
-    }
-  };
 
   useEffect(() => {
     const fetchUserData = async () => {

@@ -38,7 +38,7 @@ export default function Testimonals() {
                     <div className="flex items-start">
                      
                       <div className="">
-                        <div className="text-base font-medium text-white">Dilan Çelik- Head of marketing</div>
+                        <div className="text-base font-medium text-white">Ali Aksakal</div>
                         <div className="text-base font-medium text-teal-200">Üsküdar Üniversitesi Dil ve Konuşma Terapisi </div>
                       </div>
                     </div>

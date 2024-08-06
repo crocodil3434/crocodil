@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   doc,
-  setDoc,
   collection,
   getDocs,
   query,
@@ -45,34 +44,36 @@ const AddStep = ({ patientId, isOpen, closeModal }) => {
   }
 
   const handleFileUpload = async (file, type, index) => {
-    setUploadQueue((prevQueue) => prevQueue + 1);
     if (!file) {
       Swal.fire({
         icon: "warning",
         title: "Dosya Seçilmedi",
-        text: "Bir dosya seçilmedi.",
+        text: "Lütfen bir dosya seçin.",
       });
       return "";
     }
 
+    setUploadQueue((prevQueue) => prevQueue + 1);
     const storageRef = ref(
       storage,
       `patients/${patientId}/therapies/${selectedTherapyId}/${type}/${file.name}`
     );
+
     try {
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
-      console.log(`File uploaded: ${url}`); // Log the URL to debug
-      handleUpdateStep(index, `${type}Url`, url);
+      handleUpdateStep(index, `${type}Url`, url); // URL'yi ilgili adımda güncelle
       return url;
     } catch (error) {
       console.error("Error uploading file:", error);
       Swal.fire({
         icon: "error",
         title: "Yükleme Başarısız",
-        text: "Dosya yüklenirken bir hata oluştu, lütfen tekrar deneyin.",
+        text: "Dosya yüklenirken bir hata oluştu. Lütfen tekrar deneyin.",
       });
       return "";
+    } finally {
+      setUploadQueue((prevQueue) => prevQueue - 1);
     }
   };
 
@@ -130,8 +131,6 @@ const AddStep = ({ patientId, isOpen, closeModal }) => {
       console.error('Error sending notification email:', error);
     }
   };
-  
-  
 
   const handleSubmitAllSteps = async () => {
     if (!selectedTherapyId) {
@@ -286,18 +285,13 @@ const AddStep = ({ patientId, isOpen, closeModal }) => {
                               Fotoğraf Yükle
                               <input
                                 type="file"
+                                accept="image/*" // Sadece resim dosyalarını kabul et
                                 onChange={(e) =>
                                   handleFileUpload(
                                     e.target.files[0],
                                     "photo",
                                     index
-                                  ).then((url) => {
-                                    if (uploadQueue >= 0) {
-                                      setUploadQueue(
-                                        (prevQueue) => prevQueue - 1
-                                      );
-                                    }
-                                  })
+                                  )
                                 }
                                 className="block w-full"
                               />
@@ -307,18 +301,13 @@ const AddStep = ({ patientId, isOpen, closeModal }) => {
                               Video Yükle
                               <input
                                 type="file"
+                                accept="video/*" // Sadece video dosyalarını kabul et
                                 onChange={(e) =>
                                   handleFileUpload(
                                     e.target.files[0],
                                     "video",
                                     index
-                                  ).then((url) => {
-                                    if (uploadQueue >= 0) {
-                                      setUploadQueue(
-                                        (prevQueue) => prevQueue - 1
-                                      );
-                                    }
-                                  })
+                                  )
                                 }
                                 className="block w-full"
                               />

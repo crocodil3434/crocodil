@@ -1,0 +1,10 @@
+{
+  "projects": {
+    "default": "crocodil-9f989",
+    "prod": "crocodil-9f989",
+    "live": "test-947ec"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
+}

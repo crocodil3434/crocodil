@@ -1,12 +1,8 @@
 import React, { useState } from "react";
 import Swal from "sweetalert2";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { storage } from "../firebaseConfig"; // Ensure you export `storage` from your Firebase config file
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { firestore, storage } from "../firebaseConfig";
+import { collection, addDoc } from "firebase/firestore";
 
 const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
   const [patientName, setPatientName] = useState("");
@@ -15,16 +11,36 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
   const [patientPassword, setPatientPassword] = useState("");
   const [files, setFiles] = useState([]);
   const [caregiverName, setCaregiverName] = useState("");
+  const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFileChange = (event) => {
-    if (files.length + event.target.files.length > 5) {
-      alert("You cannot upload more than 5 files.");
-      return;
-    }
     const newFiles = Array.from(event.target.files);
-    setFiles((prev) => [...prev, ...newFiles]);
-    event.target.value = null; // Reset the file input to allow re-uploads if needed
+    const validFiles = newFiles.filter((file) => {
+      const isValidType = /\.(jpg|jpeg|png|gif)$/i.test(file.name);
+      const isValidSize = file.size <= 100 * 1024 * 1024; // 100 MB
+
+      if (!isValidType) {
+        Swal.fire({
+          icon: "error",
+          title: "Geçersiz Dosya Türü",
+          text: `${file.name} geçersiz bir dosya türüne sahip. Lütfen yalnızca resim dosyaları yükleyin.`,
+        });
+      }
+
+      if (!isValidSize) {
+        Swal.fire({
+          icon: "error",
+          title: "Dosya Çok Büyük",
+          text: `${file.name} dosyası çok büyük. Lütfen maksimum 100 MB boyutunda dosyalar yükleyin.`,
+        });
+      }
+
+      return isValidType && isValidSize;
+    });
+
+    setFiles((prev) => [...prev, ...validFiles]);
+    event.target.value = null; // File input'u sıfırla
   };
 
   // Remove file from local state
@@ -68,17 +84,13 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
       lastName: patientName.split(" ")[1] || "",
       files: fileUrls ?? [],
       caregiverName: caregiverName ?? "",
+      description: description ?? "",
       doctorId,
     };
 
     try {
-      const response = await fetch("https://dctback.vercel.app/createUser", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patientDetails),
-      });
-
-      if (!response.ok) throw new Error("Failed to register patient.");
+      // Firestore'a hasta bilgilerini ekleyin
+      await addDoc(collection(firestore, "patients"), patientDetails);
 
       Swal.fire({
         icon: "success",
@@ -88,6 +100,7 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
 
       closeModal();
     } catch (error) {
+      console.error("Error adding patient:", error);
       alert("Failed to register patient");
     } finally {
       setIsLoading(false);
@@ -202,7 +215,7 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
                     onChange={(e) => setCaregiverName(e.target.value)}
                     id="caregiver-name"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400  dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    placeholder="$Bakım Veren Adı & Soyadı"
+                    placeholder="Bakım Veren Adı & Soyadı"
                   />
                 </div>
 
@@ -216,6 +229,8 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
                   <textarea
                     id="description"
                     rows="4"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                     className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400  dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Burada terapiyle ilgili açıklamalarınızı yazınız"
                   ></textarea>
@@ -251,6 +266,7 @@ const Modal = ({ isOpen, closeModal, doctorId, refetchPatients }) => {
                           Add More Files
                           <input
                             type="file"
+                            accept="image/*" // Sadece resim dosyalarını kabul et
                             multiple
                             onChange={handleFileChange}
                             className="hidden"

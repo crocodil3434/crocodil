@@ -12,7 +12,17 @@ import {
 } from "../../../components/inputs/Index";
 
 const fields = [
-  { name: "grade", label: "GRADE" },
+  {
+    name: "grade",
+    label: "GRADE",
+    type: "radio",
+    options: [
+      { label: "0=Normal", value: 0 },
+      { label: "1=Hafif etkilenmiş", value: 1 },
+      { label: "2=Orta derecede etkilenmiş", value: 2 },
+      { label: "3=Şiddetli derecede etkilenmiş", value: 3 },
+    ],
+  },
   {
     name: "roughness",
     label: "ROUGHNESS",
